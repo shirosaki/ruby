@@ -126,6 +126,7 @@ extern DWORD rb_w32_osid(void);
 #undef fputchar
 #undef utime
 #undef lseek
+#undef stat
 #undef fstat
 #define getc(_stream)		rb_w32_getc(_stream)
 #define getchar()		rb_w32_getc(stdin)
@@ -753,6 +754,20 @@ uintptr_t rb_w32_asynchronize(asynchronous_func_t func, uintptr_t self, int argc
 { /* satisfy cc-mode */
 #endif
 }  /* extern "C" { */
+#endif
+
+#ifdef __MINGW64__
+/*
+ * Use powl() instead of broken pow() of x86_64-w64-mingw32.
+ * This workaround will fix test failures in test_bignum.rb,
+ * test_fixnum.rb and test_float.rb etc.
+ */
+static inline double
+rb_w32_pow(double x, double y)
+{
+    return powl(x, y);
+}
+#define pow rb_w32_pow
 #endif
 
 #endif /* RUBY_WIN32_H */

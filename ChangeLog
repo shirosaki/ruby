@@ -1,3 +1,143 @@
+Tue Sep 25 09:30:36 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/mkexports.rb: should not export DllMain().
+	  reported by luis at [ruby-core:46743] [Bug #6790], solved by
+	  Heesob Park, and confirmed by nobu.
+
+Mon Sep 24 16:34:07 2012  Hiroshi Shirosaki  <h.shirosaki@gmail.com>
+
+	* include/ruby/win32.h (rb_w32_pow): add new function.
+	  We use powl() instead of broken pow() for x64-mingw32. This workaround
+	  fixes test failures related to floating point numeric.
+	  [ruby-core:46686] [Bug #6784]
+
+Mon Sep 24 10:38:55 2012  Luis Lavena  <luislavena@gmail.com>
+
+	* test/win32ole/test_win32ole_method.rb (is_ruby64?): Correct platform
+	  used to identify mingw-w64 (x64-mingw32). Patch by Hiroshi Shirosaki.
+	  [ruby-core:46651][Bug #6782]
+
+Mon Sep 24 10:37:56 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/test/unit/parallel.rb: workaround fix for rubygems.
+	  RubyGems can't find rake if the source directory is not equal to
+	  the directory which is running the test. [Bug #6604]
+
+Fri Sep 21 19:53:38 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/dl/cfunc.c (rb_dlcfunc_call): should convert a Bignum value to
+	  unsigned long long on Win64.
+	  [ruby-core:44636][Bug #6364] reported by raylinn@gmail.com (ray linn)
+
+Fri Sep 21 18:45:20 2012  Luis Lavena  <luislavena@gmail.com>
+
+	* include/ruby/win32.h: undef stat to silence mingw-w64 stat
+	  redefinition warnings (GCC 4.6.3).
+
+Fri Sep 21 17:54:54 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* configure.in: add -Wall always.
+
+Thu Sep 20 10:23:37 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* thread_pthread.c (native_cond_initialize): destroy condattr
+	  after using it. Patch by Stanislav Sedov. Thank you.
+	  [Bug #7041] [ruby-core:47619]
+
+Sun Sep  9 23:01:43 2012  Tanaka Akira  <akr@fsij.org>
+
+	* ext/zlib/extconf.rb: detect z_crc_t type which will be defined
+	  since zlib-1.2.7.
+
+	* ext/zlib/zlib.c (rb_zlib_crc_table): use z_crc_t if available.
+
+Sun Sep  9 02:44:21 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/zlib/extconf.rb: Use an exception instaed of bare puts.
+
+Sun Sep  9 02:44:21 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/psych/extconf.rb: Use an exception instaed of bare abort.
+
+Sun Sep  9 02:44:21 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/fiddle/extconf.rb: Use an exception instaed of bare abort.
+
+Sun Sep  9 02:44:21 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/readline/extconf.rb: Use an exception instead of bare exit.
+
+Sun Sep  9 02:34:39 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* ext/extmk.rb: Show a message when extconf.rb raised an exception.
+	* ext/openssl/extconf.rb: Use exception raising instead of message
+	  and/or abort. We want to display error message to console _and_
+	  logging into mkmf.log.
+
+Sun Sep  9 02:30:20 2012  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* thread.c (rb_mutex_lock): stop multiple threads use
+	  pthread_cond_timedwait() concurrently. [Bug #6278] [ruby-core:44275]
+
+Thu Aug 30 09:24:43 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* lib/uri/ftp.rb (URI::FTP#initialize): raise InvalidURIError if "//"
+	  is not present [ruby-core:47344] [Bug #6945]
+
+Tue Aug 28 00:40:14 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/webrick/test_cgi.rb (TestWEBrickCGI#start_cgi_server): there are
+	  no guarantee of existance of RbConfig::CONFIG['LIBPATHENV'].
+	  it only exists in Unix-like environments.
+
+	* test/webrick/test_filehandler.rb
+	  (WEBrick::TestFileHandler#test_script_disclosure): ditto.
+
+Thu Aug 23 12:08:25 2012  Hiroshi Shirosaki  <h.shirosaki@gmail.com>
+
+	* test/ruby/test_file_exhaustive.rb
+	  (TestFileExhaustive#test_stat_special_file): add a test.
+	  GetFileAttributesExW fails to get attributes of special files
+	  such as pagefile.sys.
+
+	* win32/win32.c (check_valid_dir): for performance, check the path
+	  by FindFirstFileW only if the path contains "...".
+
+	* win32/win32.c (winnt_stat): use GetFileAttributesExW instead of
+	  FindFirstFileW since GetFileAttributesExW is faster.
+	  Based on the patch by Dusan D. Majkic.
+	  [ruby-core:47083] [Feature #6845]
+
+Thu Aug 23 11:19:51 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread_pthread.c (ruby_init_stack): STACK_GROW_DIR_DETECTION is
+	  necessary on platforms with unknown stack direction.  [Bug #6761]
+
+Thu Aug 23 11:19:51 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* thread_pthread.c (get_stack): Linux is the only OS which includes
+	  the size of guard page into the stack size.
+
+Thu Aug 23 11:19:51 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* gc.h (IS_STACK_DIR_UPPER): utility macro.
+
+	* thread_pthread.c (get_stack): seems stack size does not include
+	  guard size on Mac OS X.
+
+	* thread_pthread.c (ruby_init_stack): adjust stack size for offset of
+	  addr from the bottom.
+
+Thu Aug 23 11:19:51 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* thread_pthread.c (ruby_init_stack): use stack info if possible.
+
+Mon Aug 20 17:11:01 2012  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* file.c (file_path_convert): don't convert it when the path string is
+	  ascii only. [ruby-core:41556] [Bug #5733]
+	  tests are contributed by nobu.
+
 Thu Aug  9 22:48:58 2012  NARUSE, Yui  <naruse@ruby-lang.org>
 
 	* pack.c (pack_unpack): when unpack('M') occurs an illegal byte
