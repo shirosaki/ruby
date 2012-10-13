@@ -1,3 +1,51 @@
+Sat Oct 13 23:15:39 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* regparse.c (parse_char_class): should match with a hyphen after a
+	  range in a character class.
+
+	* test/ruby/test_regexp.rb (TestRegexp#test_char_class): fixed wrong
+	  test.
+
+	* test/ruby/test_regexp.rb (TestRegexp#check): now can accept the
+	  error message.
+
+	* test/ruby/test_regexp.rb
+	  (TextRegexp#test_raw_hyphen_and_tk_char_type_after_range): renamed
+	  because the previous name was wrong.
+
+	* test/ruby/test_regexp.rb
+	  (TextRegexp#test_raw_hyphen_and_tk_char_type_after_range): added
+	  more test pattern.
+
+Sat Oct 13 03:01:53 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* file.c (realpath_rec): prevent link from GC while link_names refers
+	  the content.
+
+Sat Oct 13 01:37:48 2012  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* test/ruby/test_regexp.rb
+	  (TestRegexp#test_raw_hyphen_and_type_char_after_range): added new
+	  test. ref [ruby-core:47115] [Backport #6853]
+
+Fri Oct 12 21:55:08 2012  Hiroshi Shirosaki  <h.shirosaki@gmail.com>
+
+	* include/ruby/win32.h (rb_w32_pow): set floating point precision
+	  for mingw-w64 x86 pow(). This improves the precision of pow() on
+	  Windows XP for TestFloat#test_round_with_precision failure.
+	  [ruby-core:47911] [Bug #7142]
+
+Fri Oct 12 21:37:25 2012  Hiroshi Shirosaki  <h.shirosaki@gmail.com>
+
+	* test/webrick/test_cgi.rb (TestWEBrickCGI#test_cgi): skip a test
+	  depending on locale on Windows. ENV[] doesn't work properly if
+	  console code page is not equal to file system encoding.
+	  [ruby-core:47910] [Bug #7140]
+
+Fri Oct 12 20:40:29 2012  Tanaka Akira  <akr@fsij.org>
+
+	* process.c (posix_sh_cmds): the command name of colon is ":".
+
 Fri Oct 12 18:18:03 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* file.c (rb_get_path_check): path name must not contain NUL bytes.
