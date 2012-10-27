@@ -435,4 +435,26 @@ class TestRequire < Test::Unit::TestCase
     $:.replace(loadpath)
     $".replace(features)
   end
+
+  def test_require_changed_current_dir
+    Dir.mktmpdir {|tmp|
+      Dir.chdir(tmp) {
+        Dir.mkdir("a")
+        Dir.mkdir("b")
+        open(File.join("a", "foo.rb"), "w") {}
+        open(File.join("b", "bar.rb"), "w") {|f|
+          f.puts "p :ok"
+        }
+        assert_in_out_err([], <<-INPUT, %w(:ok), [])
+          $: << "."
+          Dir.chdir("a")
+          require "foo"
+          Dir.chdir("../b")
+          p :ng unless require "bar"
+          Dir.chdir("..")
+          p :ng if require "b/bar"
+        INPUT
+      }
+    }
+  end
 end

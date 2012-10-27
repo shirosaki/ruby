@@ -34,7 +34,7 @@ rb_get_load_path(void)
 }
 
 static void
-rb_construct_expanded_load_path(int only_relative)
+rb_construct_expanded_load_path(int only_relative, int *has_relative)
 {
     rb_vm_t *vm = GET_VM();
     VALUE load_path = vm->load_path;
@@ -51,6 +51,8 @@ rb_construct_expanded_load_path(int only_relative)
 	    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
 	    continue;
 	}
+	if (!*has_relative && !rb_is_absolute_path(StringValuePtr(as_str)))
+	    *has_relative = 1;
 	if (as_str != path)
 	    rb_ary_store(load_path, i, as_str);
 	rb_str_freeze(as_str);
@@ -64,16 +66,34 @@ rb_construct_expanded_load_path(int only_relative)
 }
 
 static VALUE
+load_path_getcwd(void)
+{
+    char *cwd = my_getcwd();
+    VALUE cwd_str = rb_filesystem_str_new_cstr(cwd);
+    xfree(cwd);
+    return cwd_str;
+}
+
+static VALUE
 rb_get_expanded_load_path(void)
 {
     rb_vm_t *vm = GET_VM();
+
     if (!rb_ary_shared_with_p(vm->load_path_snapshot, vm->load_path)) {
 	/* The load path was modified. Rebuild the expanded load path. */
-	rb_construct_expanded_load_path(0);
+	int has_relative = 0;
+	rb_construct_expanded_load_path(0, &has_relative);
+	vm->load_path_cwd = has_relative ? load_path_getcwd() : 0;
     }
-    else {
-	/* Expand only relative load path. */
-	rb_construct_expanded_load_path(1);
+    else if (vm->load_path_cwd) {
+	VALUE cwd = load_path_getcwd();
+	if (!rb_str_equal(vm->load_path_cwd, cwd)) {
+	    /* Current working directory or filesystem encoding was changed.
+	       Expand relative load path again. */
+	    int has_relative = 1;
+	    vm->load_path_cwd = cwd;
+	    rb_construct_expanded_load_path(1, &has_relative);
+	}
     }
     return vm->expanded_load_path;
 }
@@ -972,6 +992,7 @@ Init_load()
     vm->load_path = rb_ary_new();
     vm->expanded_load_path = rb_ary_new();
     vm->load_path_snapshot = rb_ary_new();
+    vm->load_path_cwd = 0;
 
     rb_define_virtual_variable("$\"", get_loaded_features, 0);
     rb_define_virtual_variable("$LOADED_FEATURES", get_loaded_features, 0);
