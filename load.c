@@ -74,7 +74,7 @@ load_path_getcwd(void)
     return cwd_str;
 }
 
-static VALUE
+VALUE
 rb_get_expanded_load_path(void)
 {
     rb_vm_t *vm = GET_VM();

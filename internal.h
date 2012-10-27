@@ -133,6 +133,7 @@ VALUE rb_iseq_clone(VALUE iseqval, VALUE newcbase);
 
 /* load.c */
 VALUE rb_get_load_path(void);
+VALUE rb_get_expanded_load_path(void);
 NORETURN(void rb_load_fail(VALUE, const char*));
 
 /* math.c */
