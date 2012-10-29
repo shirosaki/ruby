@@ -457,4 +457,42 @@ class TestRequire < Test::Unit::TestCase
       }
     }
   end
+
+  def test_require_unmodified_lood_path
+    Dir.mktmpdir {|tmp|
+      Dir.chdir(tmp) {
+        open("foo.rb", "w") {}
+        assert_in_out_err([], <<-INPUT, %w(:ok), [])
+          $: << "#{tmp}"
+          a = 123
+          $: << a
+          begin
+            require "foo"
+          rescue TypeError
+          end
+          p :ok if $:.pop == a
+        INPUT
+      }
+    }
+  end
+
+  def test_require_changed_home
+    home = ENV['HOME']
+    Dir.mktmpdir {|tmp|
+      Dir.chdir(tmp) {
+        open("foo.rb", "w") {}
+        Dir.mkdir("a")
+        open(File.join("a", "bar.rb"), "w") {}
+        assert_in_out_err([], <<-INPUT, %w(:ok), [])
+          $: << '~'
+          ENV['HOME'] = "#{tmp}"
+          require "foo"
+          ENV['HOME'] = "#{tmp}/a"
+          p :ok if require "bar"
+        INPUT
+      }
+    }
+  ensure
+    ENV['HOME'] = home
+  end
 end

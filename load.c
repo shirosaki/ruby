@@ -34,7 +34,7 @@ rb_get_load_path(void)
 }
 
 static void
-rb_construct_expanded_load_path(int only_relative, int *has_relative)
+rb_construct_expanded_load_path(int only_tilde, int only_relative, int *has_relative)
 {
     rb_vm_t *vm = GET_VM();
     VALUE load_path = vm->load_path;
@@ -45,17 +45,21 @@ rb_construct_expanded_load_path(int only_relative, int *has_relative)
     ary = rb_ary_new2(RARRAY_LEN(load_path));
     for (i = 0; i < RARRAY_LEN(load_path); ++i) {
 	VALUE path, as_str, expanded_path;
+	char *as_cstr;
 	as_str = path = RARRAY_PTR(load_path)[i];
 	StringValue(as_str);
-	if (only_relative && rb_is_absolute_path(StringValuePtr(as_str))) {
+	as_cstr = StringValuePtr(as_str);
+	if (only_relative && rb_is_absolute_path(as_cstr)) {
 	    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
 	    continue;
 	}
-	if (!*has_relative && !rb_is_absolute_path(StringValuePtr(as_str)))
+	else if (only_tilde && (!as_cstr[0] || as_cstr[0] != '~')) {
+	    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
+	    continue;
+	}
+	if (!*has_relative && !rb_is_absolute_path(as_cstr))
 	    *has_relative = 1;
-	if (as_str != path)
-	    rb_ary_store(load_path, i, as_str);
-	rb_str_freeze(as_str);
+	rb_obj_freeze(path);
 	expanded_path = rb_file_expand_path_fast(as_str, Qnil);
 	rb_str_freeze(expanded_path);
 	rb_ary_push(ary, expanded_path);
@@ -82,17 +86,21 @@ rb_get_expanded_load_path(void)
     if (!rb_ary_shared_with_p(vm->load_path_snapshot, vm->load_path)) {
 	/* The load path was modified. Rebuild the expanded load path. */
 	int has_relative = 0;
-	rb_construct_expanded_load_path(0, &has_relative);
+	rb_construct_expanded_load_path(0, 0, &has_relative);
 	vm->load_path_cwd = has_relative ? load_path_getcwd() : 0;
     }
     else if (vm->load_path_cwd) {
 	VALUE cwd = load_path_getcwd();
+	int has_relative = 1;
 	if (!rb_str_equal(vm->load_path_cwd, cwd)) {
 	    /* Current working directory or filesystem encoding was changed.
 	       Expand relative load path again. */
-	    int has_relative = 1;
 	    vm->load_path_cwd = cwd;
-	    rb_construct_expanded_load_path(1, &has_relative);
+	    rb_construct_expanded_load_path(0, 1, &has_relative);
+	}
+	else {
+	    /* Expand only tilde (User HOME) */
+	    rb_construct_expanded_load_path(1, 0, &has_relative);
 	}
     }
     return vm->expanded_load_path;
