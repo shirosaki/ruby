@@ -1,3 +1,14 @@
+Thu Nov  1 10:46:31 2012  Greg Price  <price@mit.edu>
+
+	* load.c (loaded_feature_path): clarify and briefly comment
+	  function.  These clarifications have no effect on the behavior
+	  of the function.
+
+	* load.c (rb_feature_p): explain the search loop.  Especially
+	  useful because the logic is complicated as described in the
+	  second paragraph.
+	  [ruby-core:47970] [Bug #7158]
+
 Wed Oct 31 18:17:38 2012  Narihiro Nakamura  <authornari@gmail.com>
 
 	* gc.c (gc_profile_record): don't define unused variables when
