@@ -167,8 +167,8 @@ check_path_encoding(VALUE str)
     return enc;
 }
 
-static VALUE
-rb_get_path_check(VALUE obj, int level)
+VALUE
+rb_get_path_check_to_string(VALUE obj, int level, int *has_to_path)
 {
     VALUE tmp;
     ID to_path;
@@ -182,8 +182,16 @@ rb_get_path_check(VALUE obj, int level)
     if (tmp == Qundef) {
 	tmp = obj;
     }
+    else {
+	*has_to_path = 1;
+    }
     StringValue(tmp);
+    return tmp;
+}
 
+VALUE
+rb_get_path_check_convert(VALUE obj, VALUE tmp, int level)
+{
     tmp = file_path_convert(tmp);
     if (obj != tmp && insecure_obj_p(tmp, level)) {
 	rb_insecure_operation();
@@ -193,6 +201,14 @@ rb_get_path_check(VALUE obj, int level)
     StringValueCStr(tmp);
 
     return rb_str_new4(tmp);
+}
+
+static VALUE
+rb_get_path_check(VALUE obj, int level)
+{
+    int has_to_path = 0;
+    VALUE tmp = rb_get_path_check_to_string(obj, level, &has_to_path);
+    return rb_get_path_check_convert(obj, tmp, level);
 }
 
 VALUE
@@ -3255,7 +3271,6 @@ rb_file_expand_path(VALUE fname, VALUE dname)
 VALUE
 rb_file_expand_path_fast(VALUE fname, VALUE dname)
 {
-    check_expand_path_args(fname, dname);
     return rb_file_expand_path_internal(fname, dname, 0, 0, EXPAND_PATH_BUFFER());
 }
 

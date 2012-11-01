@@ -33,33 +33,58 @@ rb_get_load_path(void)
     return load_path;
 }
 
+enum expand_type {
+    EXPAND_ALL,
+    EXPAND_RELATIVE,
+    EXPAND_HOME,
+    EXPAND_NON_CACHE
+};
+
+/* Construct expanded load path and store it to cache.
+   We rebuild load path partially if the cache is invalid.
+   We don't cache non string object and object which has to_path method and
+   expand it every times. We ensure $LOAD_PATH string objects are frozen.
+ */
 static void
-rb_construct_expanded_load_path(int only_tilde, int only_relative, int *has_relative)
+rb_construct_expanded_load_path(int type, int *has_relative, int *has_non_cache)
 {
     rb_vm_t *vm = GET_VM();
     VALUE load_path = vm->load_path;
     VALUE expanded_load_path = vm->expanded_load_path;
     VALUE ary;
     long i;
+    int level = rb_safe_level();
 
     ary = rb_ary_new2(RARRAY_LEN(load_path));
     for (i = 0; i < RARRAY_LEN(load_path); ++i) {
 	VALUE path, as_str, expanded_path;
+	int is_string, non_cache, has_to_path = 0;
 	char *as_cstr;
 	as_str = path = RARRAY_PTR(load_path)[i];
-	StringValue(as_str);
-	as_cstr = StringValuePtr(as_str);
-	if (only_relative && rb_is_absolute_path(as_cstr)) {
-	    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
-	    continue;
-	}
-	else if (only_tilde && (!as_cstr[0] || as_cstr[0] != '~')) {
-	    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
-	    continue;
+	is_string = (TYPE(path) == T_STRING) ? 1 : 0;
+	as_str = rb_get_path_check_to_string(path, level, &has_to_path);
+	non_cache = (!is_string || has_to_path) ? 1 : 0;
+	as_cstr = RSTRING_PTR(as_str);
+
+	if (!non_cache) {
+	    if ((type == EXPAND_RELATIVE &&
+		    rb_is_absolute_path(as_cstr)) ||
+		(type == EXPAND_HOME &&
+		    (!as_cstr[0] || as_cstr[0] != '~')) ||
+		(type == EXPAND_NON_CACHE)) {
+		    /* Use cached expanded path. */
+		    rb_ary_push(ary, RARRAY_PTR(expanded_load_path)[i]);
+		    continue;
+	    }
 	}
 	if (!*has_relative && !rb_is_absolute_path(as_cstr))
 	    *has_relative = 1;
-	rb_obj_freeze(path);
+	if (!*has_non_cache && non_cache)
+	    *has_non_cache = 1;
+	/* Freeze only string object. We expand other objects every times. */
+	if (is_string)
+	    rb_str_freeze(path);
+	as_str = rb_get_path_check_convert(path, as_str, level);
 	expanded_path = rb_file_expand_path_fast(as_str, Qnil);
 	rb_str_freeze(expanded_path);
 	rb_ary_push(ary, expanded_path);
@@ -82,25 +107,43 @@ VALUE
 rb_get_expanded_load_path(void)
 {
     rb_vm_t *vm = GET_VM();
+    const VALUE non_cache = Qtrue;
 
     if (!rb_ary_shared_with_p(vm->load_path_snapshot, vm->load_path)) {
 	/* The load path was modified. Rebuild the expanded load path. */
-	int has_relative = 0;
-	rb_construct_expanded_load_path(0, 0, &has_relative);
-	vm->load_path_cwd = has_relative ? load_path_getcwd() : 0;
-    }
-    else if (vm->load_path_cwd) {
-	VALUE cwd = load_path_getcwd();
-	int has_relative = 1;
-	if (!rb_str_equal(vm->load_path_cwd, cwd)) {
-	    /* Current working directory or filesystem encoding was changed.
-	       Expand relative load path again. */
-	    vm->load_path_cwd = cwd;
-	    rb_construct_expanded_load_path(0, 1, &has_relative);
+	int has_relative = 0, has_non_cache = 0;
+	rb_construct_expanded_load_path(EXPAND_ALL, &has_relative, &has_non_cache);
+	if (has_relative) {
+	    vm->load_path_check_cache = load_path_getcwd();
+	}
+	else if (has_non_cache) {
+	    /* Non string object and object which has to_path method. */
+	    vm->load_path_check_cache = non_cache;
 	}
 	else {
-	    /* Expand only tilde (User HOME) */
-	    rb_construct_expanded_load_path(1, 0, &has_relative);
+	    vm->load_path_check_cache = 0;
+	}
+    }
+    else if (vm->load_path_check_cache == non_cache) {
+	int has_relative = 1, has_non_cache = 1;
+	/* Expand only non-cacheable objects. */
+	rb_construct_expanded_load_path(EXPAND_NON_CACHE,
+					&has_relative, &has_non_cache);
+    }
+    else if (vm->load_path_check_cache) {
+	int has_relative = 1, has_non_cache = 1;
+	VALUE cwd = load_path_getcwd();
+	if (!rb_str_equal(vm->load_path_check_cache, cwd)) {
+	    /* Current working directory or filesystem encoding was changed.
+	       Expand relative load path and non-cacheable objects again. */
+	    vm->load_path_check_cache = cwd;
+	    rb_construct_expanded_load_path(EXPAND_RELATIVE,
+					    &has_relative, &has_non_cache);
+	}
+	else {
+	    /* Expand only tilde (User HOME) and non-cacheable objects. */
+	    rb_construct_expanded_load_path(EXPAND_HOME,
+					    &has_relative, &has_non_cache);
 	}
     }
     return vm->expanded_load_path;
@@ -429,7 +472,7 @@ rb_feature_provided(const char *feature, const char **loading)
 
     if (*feature == '.' &&
 	(feature[1] == '/' || strncmp(feature+1, "./", 2) == 0)) {
-	fullpath = rb_file_expand_path_fast(rb_str_new2(feature), Qnil);
+	fullpath = rb_file_expand_path_fast(rb_get_path(rb_str_new2(feature)), Qnil);
 	feature = RSTRING_PTR(fullpath);
     }
     if (ext && !strchr(ext, '/')) {
@@ -1000,7 +1043,7 @@ Init_load()
     vm->load_path = rb_ary_new();
     vm->expanded_load_path = rb_ary_new();
     vm->load_path_snapshot = rb_ary_new();
-    vm->load_path_cwd = 0;
+    vm->load_path_check_cache = 0;
 
     rb_define_virtual_variable("$\"", get_loaded_features, 0);
     rb_define_virtual_variable("$LOADED_FEATURES", get_loaded_features, 0);

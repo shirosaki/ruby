@@ -108,6 +108,8 @@ void rb_file_const(const char*, VALUE);
 int rb_file_load_ok(const char *);
 VALUE rb_file_expand_path_fast(VALUE, VALUE);
 VALUE rb_file_expand_path_internal(VALUE, VALUE, int, int, VALUE);
+VALUE rb_get_path_check_to_string(VALUE, int, int *);
+VALUE rb_get_path_check_convert(VALUE, VALUE, int);
 void Init_File(void);
 
 #ifdef _WIN32
