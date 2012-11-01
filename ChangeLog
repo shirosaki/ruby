@@ -1,5 +1,13 @@
 Thu Nov  1 10:46:31 2012  Greg Price  <price@mit.edu>
 
+	* array.c (rb_ary_shared_with_p): new function.
+	  Expose whether two arrays are shared (read-only, C only).
+
+	* include/ruby/intern.h (rb_ary_shared_with_p): declare.
+	  [ruby-core:47970] [Bug #7158]
+
+Thu Nov  1 10:46:31 2012  Greg Price  <price@mit.edu>
+
 	* load.c (loaded_feature_path): clarify and briefly comment
 	  function.  These clarifications have no effect on the behavior
 	  of the function.
