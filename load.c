@@ -42,8 +42,8 @@ enum expand_type {
 
 /* Construct expanded load path and store it to cache.
    We rebuild load path partially if the cache is invalid.
-   We don't cache non string object and object which has to_path method and
-   expand it every times. We ensure $LOAD_PATH string objects are frozen.
+   We don't cache non string object and expand it every times. We ensure that
+   string objects in $LOAD_PATH are frozen.
  */
 static void
 rb_construct_expanded_load_path(int type, int *has_relative, int *has_non_cache)
@@ -58,12 +58,12 @@ rb_construct_expanded_load_path(int type, int *has_relative, int *has_non_cache)
     ary = rb_ary_new2(RARRAY_LEN(load_path));
     for (i = 0; i < RARRAY_LEN(load_path); ++i) {
 	VALUE path, as_str, expanded_path;
-	int is_string, non_cache, has_to_path = 0;
+	int is_string, non_cache;
 	char *as_cstr;
 	as_str = path = RARRAY_PTR(load_path)[i];
-	is_string = (TYPE(path) == T_STRING) ? 1 : 0;
-	as_str = rb_get_path_check_to_string(path, level, &has_to_path);
-	non_cache = (!is_string || has_to_path) ? 1 : 0;
+	is_string = RB_TYPE_P(path, T_STRING) ? 1 : 0;
+	non_cache = !is_string ? 1 : 0;
+	as_str = rb_get_path_check_to_string(path, level);
 	as_cstr = RSTRING_PTR(as_str);
 
 	if (!non_cache) {
@@ -117,7 +117,7 @@ rb_get_expanded_load_path(void)
 	    vm->load_path_check_cache = load_path_getcwd();
 	}
 	else if (has_non_cache) {
-	    /* Non string object and object which has to_path method. */
+	    /* Non string object. */
 	    vm->load_path_check_cache = non_cache;
 	}
 	else {

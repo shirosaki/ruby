@@ -168,7 +168,7 @@ check_path_encoding(VALUE str)
 }
 
 VALUE
-rb_get_path_check_to_string(VALUE obj, int level, int *has_to_path)
+rb_get_path_check_to_string(VALUE obj, int level)
 {
     VALUE tmp;
     ID to_path;
@@ -177,13 +177,13 @@ rb_get_path_check_to_string(VALUE obj, int level, int *has_to_path)
 	rb_insecure_operation();
     }
 
+    if (RB_TYPE_P(obj, T_STRING)) {
+	return obj;
+    }
     CONST_ID(to_path, "to_path");
     tmp = rb_check_funcall(obj, to_path, 0, 0);
     if (tmp == Qundef) {
 	tmp = obj;
-    }
-    else {
-	*has_to_path = 1;
     }
     StringValue(tmp);
     return tmp;
@@ -206,8 +206,7 @@ rb_get_path_check_convert(VALUE obj, VALUE tmp, int level)
 static VALUE
 rb_get_path_check(VALUE obj, int level)
 {
-    int has_to_path = 0;
-    VALUE tmp = rb_get_path_check_to_string(obj, level, &has_to_path);
+    VALUE tmp = rb_get_path_check_to_string(obj, level);
     return rb_get_path_check_convert(obj, tmp, level);
 }
 

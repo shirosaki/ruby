@@ -517,29 +517,6 @@ class TestRequire < Test::Unit::TestCase
     }
   end
 
-  def test_require_string_to_path_in_load_path
-    Dir.mktmpdir {|tmp|
-      Dir.chdir(tmp) {
-        open("foo.rb", "w") {}
-        assert_in_out_err([], <<-INPUT, %w(:ok), [])
-          a = "foo"
-          ENV['FOO'] = "bar"
-          def a.to_path
-            ENV['FOO']
-          end
-          $: << a
-          begin
-            require "foo"
-            p :ng
-          rescue LoadError
-          end
-          ENV['FOO'] = "#{tmp}"
-          p :ok if require "foo"
-        INPUT
-      }
-    }
-  end
-
   def test_require_to_str_redefined_in_load_path
     Dir.mktmpdir {|tmp|
       Dir.chdir(tmp) {
